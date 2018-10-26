@@ -7,13 +7,17 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
     
-    var tasks = ["strelat'", "kolotit'"]
+    var tasks = [Task]()
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        loadTasks()
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -22,23 +26,35 @@ class TodoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "prototypeCell", for: indexPath)
-        cell.textLabel?.text = tasks[indexPath.row]
+        let task = tasks[indexPath.row]
+        
+        cell.textLabel?.text = task.title
+        cell.accessoryType = task.done ? .checkmark : .none
+        
         return cell
     }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let task = tasks[indexPath.row]
+        task.done = !task.done
         
-        tableView.cellForRow(at: indexPath)?.accessoryType = tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark ? .none : .checkmark
-        
+        tableView.reloadData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
-    @IBAction func addNew(_ sender: UIBarButtonItem) {
+    @IBAction func addTask(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         let alert = UIAlertController(title: "What would you like to do?", message: "", preferredStyle: .alert)
         
         let action = UIAlertAction(title: "Add", style: .default) { (action) in
-            self.tasks.append(textField.text!)
+            
+            let task = Task(context: self.context)
+            task.title = textField.text!
+            task.done = false
+            
+            self.tasks.append(task)
+            self.save()
+            
             self.tableView.reloadData()
         }
         
@@ -50,4 +66,24 @@ class TodoListViewController: UITableViewController {
         alert.addAction(action)
         self.present(alert, animated: true)
     }
+    
+    func save() {
+        do {
+            try context.save()
+        } catch {
+            let nserror = error as NSError
+            fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
+        }
+    }
+    
+    func loadTasks() {
+        let request: NSFetchRequest<Task> = Task.fetchRequest()
+        do {
+            tasks = try context.fetch(request)
+        } catch {
+            print("THERE'S AN ERROR READING DATA \(error)")
+        }
+        
+    }
+    
 }
